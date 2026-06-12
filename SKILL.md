@@ -1,15 +1,19 @@
 ---
 name: session-sync
-description: Sync Codex conversations with a Markdown memory folder. Use when the user says "/会话同步", "会话同步", "同步当前会话", asks to copy/save the current session, asks to list/read recent memory sessions, asks to load a specified synced session, or wants completed nodes, decisions, commands, and artifacts written to or read from D:\Notes\文档-公司\Markdown文档\memory-session.
+description: Sync Codex conversations with a user-configurable Markdown memory folder. Use when the user says "/会话同步", "会话同步", "同步当前会话", asks to copy/save the current session, asks to list/read recent memory sessions, asks to load a specified synced session, or wants completed nodes, decisions, commands, and artifacts written to or read from a session memory directory.
 ---
 
 # Session Sync
 
 ## Purpose
 
-Sync Codex sessions with Markdown notes under:
+Sync Codex sessions with Markdown notes in a user-configurable memory directory.
 
-`D:\Notes\文档-公司\Markdown文档\memory-session`
+Directory resolution order:
+
+1. explicit `-Destination` or `-MemoryDir` script argument
+2. `SESSION_SYNC_MEMORY_DIR` environment variable
+3. `Documents\session-sync-memory`
 
 The skill has two directions:
 
@@ -19,7 +23,7 @@ The skill has two directions:
 ## Save Workflow
 
 1. Treat `/会话同步` and `会话同步` as an explicit request to run this skill.
-2. Run `scripts/sync_session.ps1` from this skill directory. Use `pwsh` when available, otherwise use Windows PowerShell `powershell`. Use the default destination unless the user gives another path.
+2. Run `scripts/sync_session.ps1` from this skill directory. Use `pwsh` when available, otherwise use Windows PowerShell `powershell`. Pass `-Destination` when the user gives a memory path.
 3. If the script cannot identify the current session exactly, it should use the most recently modified Codex session JSONL file.
 4. After the script writes the Markdown file, report the saved path to the user.
 5. If the current turn contains very recent work that has not yet appeared in the session JSONL, append a short note in the final response so the user knows what may be missing.
@@ -28,7 +32,7 @@ The skill has two directions:
 
 Use this when the user asks to read, load, review, recover, or continue from synced memory sessions.
 
-1. Run `scripts/read_session.ps1` from this skill directory.
+1. Run `scripts/read_session.ps1` from this skill directory. Pass `-MemoryDir` when the user gives a memory path.
 2. If the user asks for recent sessions, list recent files first.
 3. If the user asks for the latest session, read the latest Markdown note.
 4. If the user gives a filename, path, timestamp, or session id fragment, pass it as `-Session`.
@@ -41,6 +45,13 @@ Run the default sync:
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\session-sync\scripts\sync_session.ps1"
+```
+
+Run with an explicit memory directory:
+
+```powershell
+$shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+& $shell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\session-sync\scripts\sync_session.ps1" -Destination "D:\Notes\memory-session"
 ```
 
 Run with an explicit session file:
@@ -64,6 +75,13 @@ Read the latest synced session:
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\session-sync\scripts\read_session.ps1" -Latest
+```
+
+Read from an explicit memory directory:
+
+```powershell
+$shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+& $shell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\session-sync\scripts\read_session.ps1" -MemoryDir "D:\Notes\memory-session" -Latest
 ```
 
 Read a specified synced session:

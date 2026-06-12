@@ -9,11 +9,13 @@
 - 读取最新会话记忆
 - 按文件名、时间片段、路径或 session id 片段读取指定会话记忆
 
-默认记忆目录：
+会话记忆目录可以由用户自己指定。
 
-```text
-D:\Notes\文档-公司\Markdown文档\memory-session
-```
+目录优先级：
+
+1. 运行脚本时显式传入 `-Destination` 或 `-MemoryDir`
+2. 环境变量 `SESSION_SYNC_MEMORY_DIR`
+3. 未配置时使用 `Documents\session-sync-memory`
 
 ## 仓库结构
 
@@ -101,6 +103,27 @@ Claude Code 中可以这样调用：
 
 正常情况下，Codex / Claude Code 会根据 `SKILL.md` 自动选择脚本。你也可以手动运行。
 
+### 配置记忆目录
+
+推荐设置环境变量，这样保存和读取都会使用同一个目录：
+
+```powershell
+$env:SESSION_SYNC_MEMORY_DIR = "D:\Notes\memory-session"
+```
+
+如果想长期生效，可以设置为用户环境变量：
+
+```powershell
+[Environment]::SetEnvironmentVariable("SESSION_SYNC_MEMORY_DIR", "D:\Notes\memory-session", "User")
+```
+
+也可以每次运行脚本时显式指定目录：
+
+```powershell
+-Destination "D:\Notes\memory-session"
+-MemoryDir "D:\Notes\memory-session"
+```
+
 先把 `$SkillDir` 设置成实际安装目录：
 
 ```powershell
@@ -114,6 +137,13 @@ $SkillDir = "$env:USERPROFILE\.agents\skills\session-sync"  # Codex 当前推荐
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1")
+```
+
+保存到指定记忆目录：
+
+```powershell
+$shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1") -Destination "D:\Notes\memory-session"
 ```
 
 保存指定的 Codex session JSONL：
@@ -137,6 +167,13 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -Latest
 ```
 
+从指定记忆目录读取最新会话：
+
+```powershell
+$shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -MemoryDir "D:\Notes\memory-session" -Latest
+```
+
 读取指定会话记忆：
 
 ```powershell
@@ -147,6 +184,7 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 ## 注意事项
 
 - 脚本兼容 Windows PowerShell 5.1，也支持 `pwsh`。
+- 记忆目录不是固定路径，建议通过 `SESSION_SYNC_MEMORY_DIR` 或脚本参数指定。
 - `read_session.ps1` 默认只把 `# Codex Session Sync` 开头的 Markdown 文件当作会话记忆。
 - 如果想列出记忆目录里的所有 Markdown 文件，可以给 `read_session.ps1` 加 `-AllMarkdown`。
 - 会话记忆是上下文恢复辅助，不是当前事实来源。真正改文件或操作仓库前，仍然要检查当前文件和 Git 状态。

@@ -11,9 +11,15 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Get-DefaultMemoryDir {
-    $companyDocs = -join ([char]0x6587, [char]0x6863, '-', [char]0x516C, [char]0x53F8)
-    $markdownDocs = 'Markdown' + (-join ([char]0x6587, [char]0x6863))
-    return (Join-Path (Join-Path (Join-Path 'D:\Notes' $companyDocs) $markdownDocs) 'memory-session')
+    if (-not [string]::IsNullOrWhiteSpace($env:SESSION_SYNC_MEMORY_DIR)) {
+        return $env:SESSION_SYNC_MEMORY_DIR
+    }
+
+    $documents = [Environment]::GetFolderPath('MyDocuments')
+    if ([string]::IsNullOrWhiteSpace($documents)) {
+        $documents = $env:USERPROFILE
+    }
+    return (Join-Path $documents 'session-sync-memory')
 }
 
 function Limit-Text {
