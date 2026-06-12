@@ -15,11 +15,14 @@ function Get-DefaultMemoryDir {
         return $env:SESSION_SYNC_MEMORY_DIR
     }
 
-    $documents = [Environment]::GetFolderPath('MyDocuments')
-    if ([string]::IsNullOrWhiteSpace($documents)) {
-        $documents = $env:USERPROFILE
-    }
-    return (Join-Path $documents 'session-sync-memory')
+    $configureScript = Join-Path $PSScriptRoot 'configure_memory_dir.ps1'
+    throw @"
+Session Sync memory directory is not configured.
+
+Choose the memory folder before reading sessions. Either pass -MemoryDir explicitly, set SESSION_SYNC_MEMORY_DIR, or run:
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "$configureScript"
+"@
 }
 
 function Limit-Text {
