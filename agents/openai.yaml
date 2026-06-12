@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Sync"
+  short_description: "Save and read Codex sessions from Markdown memory."
+  default_prompt: "Use $session-sync to save or read Codex session memory from the configured Markdown folder."
