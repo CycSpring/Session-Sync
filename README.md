@@ -107,6 +107,10 @@ Claude Code 中可以这样调用：
 
 推荐设置环境变量，这样保存和读取都会使用同一个目录：
 
+**这里推荐使用 Obsidian 云同步、坚果云或其他云同步工具里的某个目录**，这样不同电脑上的 Codex / Claude Code 都可以读写同一份会话记忆。
+
+示例：
+
 ```powershell
 $env:SESSION_SYNC_MEMORY_DIR = "D:\Notes\memory-session"
 ```
