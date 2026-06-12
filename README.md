@@ -1,21 +1,21 @@
 # Session Sync Skill
 
-Session Sync is an agent skill for saving and reading Codex/Claude Code session memory.
+`Session Sync` 是一个给 Codex / Claude Code 使用的会话同步 Skill。
 
-It can:
+它的用途很简单：
 
-- save the current session as a Markdown note
-- list recent saved session notes
-- read the latest saved session note
-- read a specific saved session by filename, timestamp, path, or session id fragment
+- 把当前 Codex 会话保存成 Markdown 记忆文件
+- 查看最近保存过的会话记忆
+- 读取最新会话记忆
+- 按文件名、时间片段、路径或 session id 片段读取指定会话记忆
 
-Default memory folder:
+默认记忆目录：
 
 ```text
 D:\Notes\文档-公司\Markdown文档\memory-session
 ```
 
-## What Is In This Repo
+## 仓库结构
 
 ```text
 session-sync/
@@ -27,39 +27,37 @@ session-sync/
     └── read_session.ps1
 ```
 
-`SKILL.md` tells the agent when and how to use the skill.
+说明：
 
-`sync_session.ps1` saves a Codex session JSONL file into a readable Markdown note.
+- `SKILL.md`：告诉 Codex / Claude Code 什么时候使用这个 Skill，以及怎么使用。
+- `sync_session.ps1`：把 Codex 本地 session JSONL 转成可读的 Markdown 会话记忆。
+- `read_session.ps1`：列出或读取已经保存的 Markdown 会话记忆。
 
-`read_session.ps1` lists or reads saved Markdown session notes.
+## 安装到 Codex
 
-## Install For Codex
-
-Use one of these locations.
-
-For current Codex skill discovery, install to:
+推荐安装到 Codex 当前通用 Skills 目录：
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.agents\skills" | Out-Null
 git clone https://github.com/CycSpring/Session-Sync.git "$env:USERPROFILE\.agents\skills\session-sync"
 ```
 
-If your Codex setup already uses `.codex\skills`, install to:
+如果你的 Codex 环境使用的是 `.codex\skills`，则安装到：
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills" | Out-Null
 git clone https://github.com/CycSpring/Session-Sync.git "$env:USERPROFILE\.codex\skills\session-sync"
 ```
 
-Restart Codex if the skill does not appear immediately.
+安装后如果 Skill 没有立刻出现，重启 Codex。
 
-Then invoke it with:
+Codex 中可以这样调用：
 
 ```text
 $session-sync
 ```
 
-Natural language triggers also work, for example:
+也可以直接说：
 
 ```text
 /会话同步
@@ -69,101 +67,101 @@ Natural language triggers also work, for example:
 从 memory-session 恢复上下文
 ```
 
-## Install For Claude Code
+## 安装到 Claude Code
 
-Personal install:
+个人级安装：
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null
 git clone https://github.com/CycSpring/Session-Sync.git "$env:USERPROFILE\.claude\skills\session-sync"
 ```
 
-Project install:
+项目级安装，在项目根目录执行：
 
 ```powershell
 New-Item -ItemType Directory -Force ".claude\skills" | Out-Null
 git clone https://github.com/CycSpring/Session-Sync.git ".claude\skills\session-sync"
 ```
 
-Claude Code can invoke the skill directly with:
+Claude Code 中可以这样调用：
 
 ```text
 /session-sync
 ```
 
-You can also ask in natural language:
+也可以直接说：
 
 ```text
-save this session to memory-session
-read the latest session memory
-load the session from 20260612-163002
+保存当前会话
+读取最新会话记忆
+加载 20260612-163002 这个会话
 ```
 
-## Direct Script Usage
+## 手动运行脚本
 
-The skill normally runs these scripts for you. You can also run them manually.
+正常情况下，Codex / Claude Code 会根据 `SKILL.md` 自动选择脚本。你也可以手动运行。
 
-Set `SkillDir` to wherever you cloned the skill:
+先把 `$SkillDir` 设置成实际安装目录：
 
 ```powershell
-$SkillDir = "$env:USERPROFILE\.agents\skills\session-sync"  # Codex current default
-# $SkillDir = "$env:USERPROFILE\.codex\skills\session-sync" # Codex legacy/local setup
-# $SkillDir = "$env:USERPROFILE\.claude\skills\session-sync" # Claude Code personal setup
+$SkillDir = "$env:USERPROFILE\.agents\skills\session-sync"  # Codex 当前推荐位置
+# $SkillDir = "$env:USERPROFILE\.codex\skills\session-sync" # Codex 本地旧位置
+# $SkillDir = "$env:USERPROFILE\.claude\skills\session-sync" # Claude Code 个人位置
 ```
 
-Save the latest local Codex session:
+保存最近的 Codex 本地会话：
 
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1")
 ```
 
-Save a specific Codex session JSONL:
+保存指定的 Codex session JSONL：
 
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1") -SessionFile "C:\Users\you\.codex\sessions\YYYY\MM\DD\rollout-....jsonl"
 ```
 
-List recent saved session notes:
+列出最近保存的会话记忆：
 
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -List -RecentCount 5
 ```
 
-Read the latest saved session note:
+读取最新会话记忆：
 
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -Latest
 ```
 
-Read a specified saved session note:
+读取指定会话记忆：
 
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -Session "20260612-163002"
 ```
 
-## Notes
+## 注意事项
 
-- The scripts are Windows PowerShell compatible and also work with `pwsh`.
-- `read_session.ps1` treats files starting with `# Codex Session Sync` as session notes by default.
-- Use `-AllMarkdown` with `read_session.ps1` if you want to list every Markdown file in the memory folder.
-- The saved notes are context recovery aids. Verify current files and repository state before making changes based on old notes.
+- 脚本兼容 Windows PowerShell 5.1，也支持 `pwsh`。
+- `read_session.ps1` 默认只把 `# Codex Session Sync` 开头的 Markdown 文件当作会话记忆。
+- 如果想列出记忆目录里的所有 Markdown 文件，可以给 `read_session.ps1` 加 `-AllMarkdown`。
+- 会话记忆是上下文恢复辅助，不是当前事实来源。真正改文件或操作仓库前，仍然要检查当前文件和 Git 状态。
 
-## Update
+## 更新
 
-For a cloned install:
+如果是通过 `git clone` 安装的，可以进入安装目录拉取更新：
 
 ```powershell
-git -C "$env:USERPROFILE\.codex\skills\session-sync" pull
+git -C "$env:USERPROFILE\.agents\skills\session-sync" pull
 ```
 
-Use the matching install path if you installed under `.agents\skills` or `.claude\skills`.
+如果你安装在 `.codex\skills` 或 `.claude\skills`，把命令里的路径替换成对应安装目录。
 
-## References
+## 参考
 
 - [Codex Agent Skills](https://developers.openai.com/codex/skills)
 - [Claude Code Skills](https://code.claude.com/docs/en/skills)
