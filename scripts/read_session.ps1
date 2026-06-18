@@ -11,8 +11,18 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Get-DefaultMemoryDir {
+    $userValue = [Environment]::GetEnvironmentVariable('SESSION_SYNC_MEMORY_DIR', 'User')
+    if (-not [string]::IsNullOrWhiteSpace($userValue)) {
+        return $userValue
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($env:SESSION_SYNC_MEMORY_DIR)) {
         return $env:SESSION_SYNC_MEMORY_DIR
+    }
+
+    $machineValue = [Environment]::GetEnvironmentVariable('SESSION_SYNC_MEMORY_DIR', 'Machine')
+    if (-not [string]::IsNullOrWhiteSpace($machineValue)) {
+        return $machineValue
     }
 
     $configureScript = Join-Path $PSScriptRoot 'configure_memory_dir.ps1'
@@ -50,8 +60,26 @@ function Get-MemoryFiles {
 function Test-SessionSyncFile {
     param([System.IO.FileInfo]$File)
     try {
-        $firstLine = Get-Content -LiteralPath $File.FullName -Encoding UTF8 -TotalCount 1
-        return ([string]$firstLine).Trim() -like '# Codex Session Sync*'
+        $lines = @(Get-Content -LiteralPath $File.FullName -Encoding UTF8 -TotalCount 40)
+        if ($lines.Count -eq 0) {
+            return $false
+        }
+
+        $title = ([string]$lines[0]).Trim()
+        if (
+            $title -like '# Codex Session Sync*' -or
+            $title -like '# Codex Session Summary*'
+        ) {
+            return $true
+        }
+
+        $sample = $lines -join "`n"
+        $hasSessionTitle = $title -match '(?i)(codex|session|会话|交接笔记)'
+        $hasSyncTime = $sample -match '(?m)^(同步时间|Synced)\s*[：:]'
+        $hasWorkspace = $sample -match '(?m)^(工作目录|CWD)\s*[：:]|^\s*-\s*CWD\s*:'
+        $hasUserContext = $sample -match '(?m)^(用户称呼|User Context)\s*[：:]'
+
+        return ($hasSessionTitle -and $hasSyncTime -and ($hasWorkspace -or $hasUserContext))
     } catch {
         return $false
     }
@@ -98,7 +126,7 @@ if ([string]::IsNullOrWhiteSpace($MemoryDir)) {
 
 $allFiles = Get-MemoryFiles $MemoryDir
 $sessionFiles = @($allFiles | Where-Object { Test-SessionSyncFile $_ })
-$files = if ($AllMarkdown -or -not [string]::IsNullOrWhiteSpace($Session)) { $allFiles } else { $sessionFiles }
+$files = if ($AllMarkdown -or $Latest -or $List -or -not [string]::IsNullOrWhiteSpace($Session)) { $allFiles } else { $sessionFiles }
 
 if ($List -or (-not $Latest -and [string]::IsNullOrWhiteSpace($Session))) {
     if ($files.Count -eq 0) {

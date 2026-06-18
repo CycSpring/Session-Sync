@@ -206,8 +206,8 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 
 - 脚本兼容 Windows PowerShell 5.1，也支持 `pwsh`。
 - 记忆目录不是固定路径；安装后或首次使用前应先运行 `configure_memory_dir.ps1`，或者通过脚本参数显式指定。
-- `read_session.ps1` 默认只把 `# Codex Session Sync` 开头的 Markdown 文件当作会话记忆。
-- 如果想列出记忆目录里的所有 Markdown 文件，可以给 `read_session.ps1` 加 `-AllMarkdown`。
+- `read_session.ps1` 会优先识别 `# Codex Session Sync`、`# Codex Session Summary`，也支持包含“同步时间 + 工作目录/用户称呼”等元数据的手写会话交接笔记。
+- `-List` 和 `-Latest` 默认按记忆目录里的 Markdown 修改时间工作；如果后续需要显式读取任意 Markdown 文件，也可以给 `read_session.ps1` 加 `-AllMarkdown`。
 - 会话记忆是上下文恢复辅助，不是当前事实来源。真正改文件或操作仓库前，仍然要检查当前文件和 Git 状态。
 
 ## 更新
