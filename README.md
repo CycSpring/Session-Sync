@@ -162,7 +162,7 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 -Scope home
 ```
 
-读取时如果不指定 `-Scope`，默认会同时查看 `global`、`work`、`home`。
+读取时如果不指定 `-Scope`，默认只查看记忆目录根目录，也就是 `global`。只有明确指定 `-Scope work` 或 `-Scope home` 时，才读取对应子目录。
 
 先把 `$SkillDir` 设置成实际安装目录：
 

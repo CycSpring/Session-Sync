@@ -2,7 +2,7 @@ param(
     [string]$MemoryDir,
     [string]$Session,
     [ValidateSet('all', 'global', 'work', 'home')]
-    [string]$Scope = 'all',
+    [string]$Scope = 'global',
     [switch]$Latest,
     [switch]$List,
     [switch]$AllMarkdown,
