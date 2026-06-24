@@ -260,3 +260,5 @@ git -C "$env:USERPROFILE\.agents\skills\session-sync" pull
 
 - [Codex Agent Skills](https://developers.openai.com/codex/skills)
 - [Claude Code Skills](https://code.claude.com/docs/en/skills)
+## 致谢
+欢迎提 Issue 或直接发 PR，感谢 Linux.do 社区推动。
