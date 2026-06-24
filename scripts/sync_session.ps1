@@ -1,6 +1,8 @@
 param(
     [string]$SessionFile,
     [string]$Destination,
+    [ValidateSet('global', 'work', 'home')]
+    [string]$Scope = 'global',
     [int]$MaxOutputChars = 2000,
     [int]$MaxToolCalls = 80,
     [int]$MaxMessages = 160
@@ -26,8 +28,18 @@ function Get-LatestSessionFile {
 }
 
 function Get-DefaultDestination {
+    $userValue = [Environment]::GetEnvironmentVariable('SESSION_SYNC_MEMORY_DIR', 'User')
+    if (-not [string]::IsNullOrWhiteSpace($userValue)) {
+        return $userValue
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($env:SESSION_SYNC_MEMORY_DIR)) {
         return $env:SESSION_SYNC_MEMORY_DIR
+    }
+
+    $machineValue = [Environment]::GetEnvironmentVariable('SESSION_SYNC_MEMORY_DIR', 'Machine')
+    if (-not [string]::IsNullOrWhiteSpace($machineValue)) {
+        return $machineValue
     }
 
     $configureScript = Join-Path $PSScriptRoot 'configure_memory_dir.ps1'
@@ -38,6 +50,17 @@ Choose the memory folder before syncing. Either pass -Destination explicitly, se
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "$configureScript"
 "@
+}
+
+function Resolve-ScopedDestination {
+    param(
+        [string]$Root,
+        [string]$MemoryScope
+    )
+    if ($MemoryScope -eq 'global') {
+        return $Root
+    }
+    return (Join-Path $Root $MemoryScope)
 }
 
 function ConvertTo-SafeFilePart {
@@ -94,14 +117,6 @@ function Limit-Text {
     return $Text.Substring(0, $Limit) + "`n...[truncated $($Text.Length - $Limit) chars]"
 }
 
-function Add-SectionLine {
-    param(
-        [System.Collections.Generic.List[string]]$Lines,
-        [string]$Line = ''
-    )
-    [void]$Lines.Add($Line)
-}
-
 if ([string]::IsNullOrWhiteSpace($SessionFile)) {
     $SessionFile = Get-LatestSessionFile
 }
@@ -111,6 +126,9 @@ $SessionFile = (Resolve-Path -LiteralPath $SessionFile).Path
 if ([string]::IsNullOrWhiteSpace($Destination)) {
     $Destination = Get-DefaultDestination
 }
+
+$DestinationRoot = $Destination
+$Destination = Resolve-ScopedDestination -Root $DestinationRoot -MemoryScope $Scope
 
 if (-not (Test-Path -LiteralPath $Destination)) {
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
@@ -222,6 +240,7 @@ Write-Line
 Write-Line "- Session ID: $sessionId"
 Write-Line "- Started: $started"
 Write-Line "- Synced: $($now.ToString('yyyy-MM-dd HH:mm:ss'))"
+Write-Line "- Scope: $Scope"
 Write-Line "- CWD: $cwd"
 Write-Line "- Source JSONL: $SessionFile"
 Write-Line "- Limits: MaxToolCalls=$MaxToolCalls; MaxMessages=$MaxMessages; MaxOutputChars=$MaxOutputChars"

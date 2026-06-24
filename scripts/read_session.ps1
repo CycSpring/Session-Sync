@@ -1,6 +1,8 @@
 param(
     [string]$MemoryDir,
     [string]$Session,
+    [ValidateSet('all', 'global', 'work', 'home')]
+    [string]$Scope = 'all',
     [switch]$Latest,
     [switch]$List,
     [switch]$AllMarkdown,
@@ -50,11 +52,39 @@ function Limit-Text {
 }
 
 function Get-MemoryFiles {
-    param([string]$Dir)
+    param(
+        [string]$Dir,
+        [string]$MemoryScope
+    )
     if (-not (Test-Path -LiteralPath $Dir)) {
         throw "Memory directory not found: $Dir"
     }
-    return @(Get-ChildItem -LiteralPath $Dir -File -Filter '*.md' | Sort-Object LastWriteTime -Descending)
+
+    $items = @()
+    $scopeDirs = @()
+    if ($MemoryScope -eq 'all') {
+        $scopeDirs += [pscustomobject]@{ Scope = 'global'; Path = $Dir }
+        foreach ($childScope in @('work', 'home')) {
+            $childDir = Join-Path $Dir $childScope
+            if (Test-Path -LiteralPath $childDir) {
+                $scopeDirs += [pscustomobject]@{ Scope = $childScope; Path = $childDir }
+            }
+        }
+    } elseif ($MemoryScope -eq 'global') {
+        $scopeDirs += [pscustomobject]@{ Scope = 'global'; Path = $Dir }
+    } else {
+        $scopeDirs += [pscustomobject]@{ Scope = $MemoryScope; Path = (Join-Path $Dir $MemoryScope) }
+    }
+
+    foreach ($scopeDir in $scopeDirs) {
+        if (-not (Test-Path -LiteralPath $scopeDir.Path)) {
+            continue
+        }
+        $items += Get-ChildItem -LiteralPath $scopeDir.Path -File -Filter '*.md' | ForEach-Object {
+            $_ | Add-Member -NotePropertyName MemoryScope -NotePropertyValue $scopeDir.Scope -Force -PassThru
+        }
+    }
+    return @($items | Sort-Object LastWriteTime -Descending)
 }
 
 function Test-SessionSyncFile {
@@ -89,29 +119,53 @@ function Resolve-MemoryFile {
     param(
         [object[]]$Files,
         [string]$Query,
-        [bool]$UseLatest
+        [bool]$UseLatest,
+        [string]$MemoryRoot
     )
 
     if ($UseLatest -or [string]::IsNullOrWhiteSpace($Query)) {
         return $Files | Select-Object -First 1
     }
 
-    if (Test-Path -LiteralPath $Query) {
-        return Get-Item -LiteralPath $Query
+    $queryScope = $null
+    $queryText = $Query
+    if ($Query -match '^(work|home|global)[:/\\](.+)$') {
+        $queryScope = $Matches[1]
+        $queryText = $Matches[2]
+        $Files = @($Files | Where-Object { $_.MemoryScope -eq $queryScope })
     }
 
-    $exact = $Files | Where-Object { $_.Name -eq $Query -or $_.BaseName -eq $Query } | Select-Object -First 1
+    if (Test-Path -LiteralPath $queryText) {
+        return Get-Item -LiteralPath $queryText
+    }
+
+    $relativeCandidates = @()
+    if ($queryScope -and $queryScope -ne 'global') {
+        $relativeCandidates += Join-Path (Join-Path $MemoryRoot $queryScope) $queryText
+    } else {
+        $relativeCandidates += Join-Path $MemoryRoot $queryText
+        foreach ($childScope in @('work', 'home')) {
+            $relativeCandidates += Join-Path (Join-Path $MemoryRoot $childScope) $queryText
+        }
+    }
+    foreach ($candidate in $relativeCandidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return Get-Item -LiteralPath $candidate
+        }
+    }
+
+    $exact = $Files | Where-Object { $_.Name -eq $queryText -or $_.BaseName -eq $queryText } | Select-Object -First 1
     if ($exact) {
         return $exact
     }
 
-    $wildcard = $Files | Where-Object { $_.Name -like "*$Query*" -or $_.FullName -like "*$Query*" } | Select-Object -First 1
+    $wildcard = $Files | Where-Object { $_.Name -like "*$queryText*" -or $_.FullName -like "*$queryText*" } | Select-Object -First 1
     if ($wildcard) {
         return $wildcard
     }
 
     $contentMatch = $Files | Where-Object {
-        Select-String -LiteralPath $_.FullName -Pattern ([regex]::Escape($Query)) -Quiet -ErrorAction SilentlyContinue
+        Select-String -LiteralPath $_.FullName -Pattern ([regex]::Escape($queryText)) -Quiet -ErrorAction SilentlyContinue
     } | Select-Object -First 1
     if ($contentMatch) {
         return $contentMatch
@@ -124,7 +178,7 @@ if ([string]::IsNullOrWhiteSpace($MemoryDir)) {
     $MemoryDir = Get-DefaultMemoryDir
 }
 
-$allFiles = Get-MemoryFiles $MemoryDir
+$allFiles = Get-MemoryFiles -Dir $MemoryDir -MemoryScope $Scope
 $sessionFiles = @($allFiles | Where-Object { Test-SessionSyncFile $_ })
 $files = if ($AllMarkdown -or $Latest -or $List -or -not [string]::IsNullOrWhiteSpace($Session)) { $allFiles } else { $sessionFiles }
 
@@ -135,18 +189,21 @@ if ($List -or (-not $Latest -and [string]::IsNullOrWhiteSpace($Session))) {
         exit 0
     }
     $files |
-        Select-Object -First $RecentCount @{Name='Modified';Expression={$_.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')}}, Length, Name, FullName |
+        Select-Object -First $RecentCount @{Name='Modified';Expression={$_.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')}}, @{Name='Scope';Expression={$_.MemoryScope}}, Length, Name, FullName |
         Format-Table -AutoSize | Out-String -Width 4096
     exit 0
 }
 
-$target = Resolve-MemoryFile -Files $files -Query $Session -UseLatest ([bool]$Latest)
+$target = Resolve-MemoryFile -Files $files -Query $Session -UseLatest ([bool]$Latest) -MemoryRoot $MemoryDir
 if (-not $target) {
     throw "No Codex Session Sync notes found in: $MemoryDir"
 }
 
 $content = Get-Content -LiteralPath $target.FullName -Encoding UTF8 -Raw
 Write-Output "Source: $($target.FullName)"
+if ($target.PSObject.Properties.Name -contains 'MemoryScope') {
+    Write-Output "Scope: $($target.MemoryScope)"
+}
 Write-Output "Modified: $($target.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 Write-Output "Length: $($target.Length)"
 Write-Output ""
