@@ -145,6 +145,25 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 -MemoryDir "D:\Notes\memory-session"
 ```
 
+### 记忆范围
+
+默认保存到记忆目录根目录，也就是 `global` 范围。
+
+如果你想区分公司/个人记忆，可以使用内置范围：
+
+- `global`：记忆目录根目录
+- `work`：记忆目录下的 `work` 子目录
+- `home`：记忆目录下的 `home` 子目录
+
+例如：
+
+```powershell
+-Scope work
+-Scope home
+```
+
+读取时如果不指定 `-Scope`，默认会同时查看 `global`、`work`、`home`。
+
 先把 `$SkillDir` 设置成实际安装目录：
 
 ```powershell
@@ -165,6 +184,14 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 ```powershell
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1") -Destination "D:\Notes\memory-session"
+```
+
+保存到 work 或 home 范围：
+
+```powershell
+$shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1") -Scope work
+& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\sync_session.ps1") -Scope home
 ```
 
 保存指定的 Codex session JSONL：
@@ -188,6 +215,14 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -Latest
 ```
 
+只读取某个范围：
+
+```powershell
+$shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -Scope work -List
+& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $SkillDir "scripts\read_session.ps1") -Scope home -Latest
+```
+
 从指定记忆目录读取最新会话：
 
 ```powershell
@@ -206,6 +241,7 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 
 - 脚本兼容 Windows PowerShell 5.1，也支持 `pwsh`。
 - 记忆目录不是固定路径；安装后或首次使用前应先运行 `configure_memory_dir.ps1`，或者通过脚本参数显式指定。
+- `work` 和 `home` 是 Session Sync 的记忆范围，不是当前项目里的 `work/` 或 `home/` 文件夹。
 - `read_session.ps1` 会优先识别 `# Codex Session Sync`、`# Codex Session Summary`，也支持包含“同步时间 + 工作目录/用户称呼”等元数据的手写会话交接笔记。
 - `-List` 和 `-Latest` 默认按记忆目录里的 Markdown 修改时间工作；如果后续需要显式读取任意 Markdown 文件，也可以给 `read_session.ps1` 加 `-AllMarkdown`。
 - 会话记忆是上下文恢复辅助，不是当前事实来源。真正改文件或操作仓库前，仍然要检查当前文件和 Git 状态。
